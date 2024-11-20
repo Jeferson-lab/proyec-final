@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, AlertTriangle, Shield, MapPin, HelpCircle } from 'lucide-react';
+import axios from 'axios';
+import { Send, Bot, HelpCircle } from 'lucide-react';
 import { MensajeChat } from '../types';
 
 const Chatbot: React.FC = () => {
   const [mensajes, setMensajes] = useState<MensajeChat[]>([
     {
       id: 1,
-      texto: "¡Hola! Soy tu asistente de seguridad. ¿En qué puedo ayudarte?",
+      texto: "¡Hola! Soy tu asistente de seguridad impulsado por inteligencia artificial. ¿En qué puedo ayudarte?",
       esUsuario: false,
-      fecha: new Date()
-    }
+      fecha: new Date(),
+    },
   ]);
   const [inputMensaje, setInputMensaje] = useState('');
   const [escribiendo, setEscribiendo] = useState(false);
@@ -20,28 +21,38 @@ const Chatbot: React.FC = () => {
     mensajesFinRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes]);
 
-  const respuestasAutomaticas: { [key: string]: string } = {
-    emergencia: "🚨 Por favor, marca inmediatamente al número de emergencias 911. Mantén la calma y proporciona tu ubicación exacta.",
-    ayuda: "Puedo ayudarte con:\n- Reportar incidentes\n- Información sobre seguridad\n- Consejos de prevención\n- Estado de alertas\n¿Qué necesitas?",
-    ubicacion: "📍 Para compartir tu ubicación actual, puedes usar el botón de ubicación en el mapa principal. ¿Necesitas ayuda para reportar un incidente?",
-    reporte: "Para reportar un incidente:\n1. Usa el botón rojo '+' en la pantalla principal\n2. Selecciona el tipo de incidente\n3. Describe lo que observaste\n4. Añade la ubicación\n¿Quieres que te guíe en el proceso?",
-    alerta: "🚨 Para ver las alertas activas en tu zona, ve a la sección 'Alertas' en el menú inferior. ¿Quieres que te muestre las alertas más recientes?",
-    consejos: "🛡️ Algunos consejos de seguridad básicos:\n- Mantén contactos de emergencia a mano\n- Evita zonas poco iluminadas\n- Reporta actividades sospechosas\n¿Quieres consejos más específicos?",
-    default: "Entiendo tu consulta. Para ayudarte mejor, ¿podrías especificar si necesitas información sobre:\n1. Reportar un incidente\n2. Ver alertas activas\n3. Consejos de seguridad\n4. Contactos de emergencia"
+  const obtenerRespuestaChatGPT = async (mensaje: string): Promise<string> => {
+    const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
+  
+    try {
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-4', // Cambia a 'gpt-3.5-turbo' si es necesario
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Eres un asistente experto en seguridad. Responde de forma breve, clara y concisa, solo con información relevante para el usuario.',
+            },
+            { role: 'user', content: mensaje },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+  
+      return response.data.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('Error al conectar con la API de OpenAI:', error);
+      return 'Lo siento, ocurrió un error. Intenta de nuevo.';
+    }
   };
-
-  const obtenerRespuestaBot = (mensaje: string): string => {
-    const mensajeLower = mensaje.toLowerCase();
-    
-    if (mensajeLower.includes('emergencia')) return respuestasAutomaticas.emergencia;
-    if (mensajeLower.includes('ayuda')) return respuestasAutomaticas.ayuda;
-    if (mensajeLower.includes('ubicación') || mensajeLower.includes('ubicacion')) return respuestasAutomaticas.ubicacion;
-    if (mensajeLower.includes('reportar') || mensajeLower.includes('reporte')) return respuestasAutomaticas.reporte;
-    if (mensajeLower.includes('alerta')) return respuestasAutomaticas.alerta;
-    if (mensajeLower.includes('consejo') || mensajeLower.includes('tip')) return respuestasAutomaticas.consejos;
-    
-    return respuestasAutomaticas.default;
-  };
+  
 
   const enviarMensaje = async () => {
     if (!inputMensaje.trim()) return;
@@ -50,23 +61,23 @@ const Chatbot: React.FC = () => {
       id: mensajes.length + 1,
       texto: inputMensaje,
       esUsuario: true,
-      fecha: new Date()
+      fecha: new Date(),
     };
 
-    setMensajes(prev => [...prev, nuevoMensajeUsuario]);
+    setMensajes((prev) => [...prev, nuevoMensajeUsuario]);
     setInputMensaje('');
     setEscribiendo(true);
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const respuestaChatGPT = await obtenerRespuestaChatGPT(inputMensaje);
 
     const respuestaBot: MensajeChat = {
       id: mensajes.length + 2,
-      texto: obtenerRespuestaBot(inputMensaje),
+      texto: respuestaChatGPT,
       esUsuario: false,
-      fecha: new Date()
+      fecha: new Date(),
     };
 
-    setMensajes(prev => [...prev, respuestaBot]);
+    setMensajes((prev) => [...prev, respuestaBot]);
     setEscribiendo(false);
   };
 
@@ -77,24 +88,18 @@ const Chatbot: React.FC = () => {
     }
   };
 
-  const renderIconoAyuda = (texto: string) => {
-    if (texto.includes('emergencia')) return <AlertTriangle className="w-5 h-5 text-red-500" />;
-    if (texto.includes('consejo')) return <Shield className="w-5 h-5 text-green-500" />;
-    if (texto.includes('ubicación')) return <MapPin className="w-5 h-5 text-blue-500" />;
-    return <HelpCircle className="w-5 h-5 text-gray-500" />;
-  };
-
   return (
     <div className="flex flex-col h-full bg-gray-50">
+      {/* Encabezado del Chat */}
       <div className="bg-white shadow-sm p-4 flex items-center space-x-2">
         <Bot className="w-6 h-6 text-indigo-600" />
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Asistente de Seguridad</h2>
-          <p className="text-sm text-gray-500">Siempre disponible para ayudarte</p>
+          <p className="text-sm text-gray-500">Impulsado por inteligencia artificial</p>
         </div>
       </div>
 
-      {/* Barra de Entrada (Movida arriba) */}
+      {/* Barra de entrada */}
       <div className="bg-white border-b p-4 shadow-sm">
         <div className="flex space-x-2">
           <input
@@ -115,7 +120,7 @@ const Chatbot: React.FC = () => {
           </button>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          Presiona Enter para enviar • Escribe "ayuda" para ver las opciones disponibles
+          Presiona Enter para enviar.
         </p>
       </div>
 
@@ -127,25 +132,18 @@ const Chatbot: React.FC = () => {
             className={`flex ${mensaje.esUsuario ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-3 ${
-                mensaje.esUsuario
+              className={`max-w-[80%] rounded-lg p-3 ${mensaje.esUsuario
                   ? 'bg-indigo-600 text-white'
                   : 'bg-white shadow-sm border border-gray-200'
-              }`}
+                }`}
             >
-              <div className="flex items-start space-x-2">
-                {!mensaje.esUsuario && renderIconoAyuda(mensaje.texto)}
-                <div>
-                  <p className={`${mensaje.esUsuario ? 'text-white' : 'text-gray-800'} whitespace-pre-line`}>
-                    {mensaje.texto}
-                  </p>
-                  <p className={`text-xs mt-1 ${
-                    mensaje.esUsuario ? 'text-indigo-200' : 'text-gray-500'
-                  }`}>
-                    {mensaje.fecha.toLocaleTimeString()}
-                  </p>
-                </div>
-              </div>
+              <p className={`${mensaje.esUsuario ? 'text-white' : 'text-gray-800'} whitespace-pre-line`}>
+                {mensaje.texto}
+              </p>
+              <p className={`text-xs mt-1 ${mensaje.esUsuario ? 'text-indigo-200' : 'text-gray-500'
+                }`}>
+                {mensaje.fecha.toLocaleTimeString()}
+              </p>
             </div>
           </div>
         ))}
