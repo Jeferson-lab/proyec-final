@@ -10,7 +10,7 @@ const Mapa: React.FC = () => {
 
   return (
     <GoogleMap
-      mapContainerStyle={{ width: "100%", height: "400px" }}
+      mapContainerStyle={{ width: "100%", height: "100%", }}
       center={{ lat: -34.603722, lng: -58.381592 }}
       zoom={10}
     />

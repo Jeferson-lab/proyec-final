@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Send, Bot, HelpCircle } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 import { MensajeChat } from '../types';
 
 const Chatbot: React.FC = () => {
@@ -15,7 +15,6 @@ const Chatbot: React.FC = () => {
   const [inputMensaje, setInputMensaje] = useState('');
   const [escribiendo, setEscribiendo] = useState(false);
   const mensajesFinRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     mensajesFinRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,17 +22,17 @@ const Chatbot: React.FC = () => {
 
   const obtenerRespuestaChatGPT = async (mensaje: string): Promise<string> => {
     const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-  
+
     try {
       const response = await axios.post(
         'https://api.openai.com/v1/chat/completions',
         {
-          model: 'gpt-3.5-turbo', // Cambia a 'gpt-3.5-turbo' si es necesario
+          model: 'gpt-3.5-turbo',
           messages: [
             {
               role: 'system',
               content:
-                'Eres un asistente experto en seguridad. Responde de forma breve, clara y concisa, solo con información relevante para el usuario.',
+                'Eres un asistente experto en seguridad. Responde de forma breve, clara y concisa.',
             },
             { role: 'user', content: mensaje },
           ],
@@ -45,14 +44,13 @@ const Chatbot: React.FC = () => {
           },
         }
       );
-  
+
       return response.data.choices[0].message.content.trim();
     } catch (error) {
       console.error('Error al conectar con la API de OpenAI:', error);
-      return 'Lo siento, ocurrió un error. Intenta de nuevo.';
+      return 'Lo siento, ocurrió un error. Por favor, intenta de nuevo más tarde.';
     }
   };
-  
 
   const enviarMensaje = async () => {
     if (!inputMensaje.trim()) return;
@@ -90,7 +88,6 @@ const Chatbot: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      {/* Encabezado del Chat */}
       <div className="bg-white shadow-sm p-4 flex items-center space-x-2">
         <Bot className="w-6 h-6 text-indigo-600" />
         <div>
@@ -99,11 +96,9 @@ const Chatbot: React.FC = () => {
         </div>
       </div>
 
-      {/* Barra de entrada */}
       <div className="bg-white border-b p-4 shadow-sm">
         <div className="flex space-x-2">
           <input
-            ref={inputRef}
             type="text"
             value={inputMensaje}
             onChange={(e) => setInputMensaje(e.target.value)}
@@ -119,12 +114,9 @@ const Chatbot: React.FC = () => {
             <Send className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          Presiona Enter para enviar.
-        </p>
+        <p className="text-xs text-gray-500 mt-2">Presiona Enter para enviar.</p>
       </div>
 
-      {/* Área de Mensajes */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {mensajes.map((mensaje) => (
           <div
@@ -137,20 +129,15 @@ const Chatbot: React.FC = () => {
                   : 'bg-white shadow-sm border border-gray-200'
                 }`}
             >
-              <p className={`${mensaje.esUsuario ? 'text-white' : 'text-gray-800'} whitespace-pre-line`}>
-                {mensaje.texto}
-              </p>
-              <p className={`text-xs mt-1 ${mensaje.esUsuario ? 'text-indigo-200' : 'text-gray-500'
-                }`}>
-                {mensaje.fecha.toLocaleTimeString()}
-              </p>
+              <p>{mensaje.texto}</p>
+              <p className="text-xs mt-1 text-gray-500">{mensaje.fecha.toLocaleTimeString()}</p>
             </div>
           </div>
         ))}
         {escribiendo && (
           <div className="flex items-center space-x-2 text-gray-500">
             <Bot className="w-5 h-5" />
-            <span className="text-sm">Escribiendo...</span>
+            <span>Escribiendo...</span>
           </div>
         )}
         <div ref={mensajesFinRef} />
@@ -160,3 +147,6 @@ const Chatbot: React.FC = () => {
 };
 
 export default Chatbot;
+
+
+
