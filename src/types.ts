@@ -12,6 +12,8 @@ export interface Incidente {
   gravedad: 'baja' | 'media' | 'alta';
 }
 
+
+
 export interface MensajeChat {
   id: number;
   texto: string;
