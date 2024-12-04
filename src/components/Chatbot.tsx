@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
-import { Send, Bot, HelpCircle } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 import { MensajeChat } from '../types';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const Chatbot: React.FC = () => {
   const [mensajes, setMensajes] = useState<MensajeChat[]>([
@@ -15,44 +15,36 @@ const Chatbot: React.FC = () => {
   const [inputMensaje, setInputMensaje] = useState('');
   const [escribiendo, setEscribiendo] = useState(false);
   const mensajesFinRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     mensajesFinRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes]);
 
-  const obtenerRespuestaChatGPT = async (mensaje: string): Promise<string> => {
-    const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-  
+  // Configuración de Google Generative AI
+  const genAI = new GoogleGenerativeAI("AIzaSyB7mGHhkpbTPhVC9wTMUgpGgM3ZRNru1E8"); // Usa tu clave API
+
+  const limpiarTexto = (texto: string): string => {
+    // Elimina asteriscos y caracteres innecesarios
+    return texto.replace(/\**\**/g, '').trim();
+  };
+
+  const obtenerRespuestaGemini = async (mensaje: string): Promise<string> => {
     try {
-      const response = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: 'gpt-3.5-turbo', // Cambia a 'gpt-3.5-turbo' si es necesario
-          messages: [
-            {
-              role: 'system',
-              content:
-                'Eres un asistente experto en seguridad. Responde de forma breve, clara y concisa, solo con información relevante para el usuario.',
-            },
-            { role: 'user', content: mensaje },
-          ],
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-  
-      return response.data.choices[0].message.content.trim();
+      // Crear el modelo generativo
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      // Generar contenido a partir del mensaje del usuario
+      const result = await model.generateContent(mensaje);
+      const response = await result.response;
+      const text = await response.text();
+
+      // Limpia el texto antes de devolverlo
+      return limpiarTexto(text) || 'Lo siento, no entendí tu mensaje. Por favor, intenta de nuevo.';
     } catch (error) {
-      console.error('Error al conectar con la API de OpenAI:', error);
-      return 'Lo siento, ocurrió un error. Intenta de nuevo.';
+      console.error('Error al conectar con la API de Google Gemini:', error);
+      return 'Lo siento, ocurrió un error. Por favor, intenta de nuevo más tarde.';
     }
   };
-  
 
   const enviarMensaje = async () => {
     if (!inputMensaje.trim()) return;
@@ -68,11 +60,11 @@ const Chatbot: React.FC = () => {
     setInputMensaje('');
     setEscribiendo(true);
 
-    const respuestaChatGPT = await obtenerRespuestaChatGPT(inputMensaje);
+    const respuestaGemini = await obtenerRespuestaGemini(inputMensaje);
 
     const respuestaBot: MensajeChat = {
       id: mensajes.length + 2,
-      texto: respuestaChatGPT,
+      texto: respuestaGemini,
       esUsuario: false,
       fecha: new Date(),
     };
@@ -90,12 +82,12 @@ const Chatbot: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      {/* Encabezado del Chat */}
+      {/* Encabezado */}
       <div className="bg-white shadow-sm p-4 flex items-center space-x-2">
         <Bot className="w-6 h-6 text-indigo-600" />
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Asistente de Seguridad</h2>
-          <p className="text-sm text-gray-500">Impulsado por inteligencia artificial</p>
+          <p className="text-sm text-gray-500">Impulsado por Gemini AI</p>
         </div>
       </div>
 
@@ -103,7 +95,6 @@ const Chatbot: React.FC = () => {
       <div className="bg-white border-b p-4 shadow-sm">
         <div className="flex space-x-2">
           <input
-            ref={inputRef}
             type="text"
             value={inputMensaje}
             onChange={(e) => setInputMensaje(e.target.value)}
@@ -119,12 +110,10 @@ const Chatbot: React.FC = () => {
             <Send className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          Presiona Enter para enviar.
-        </p>
+        <p className="text-xs text-gray-500 mt-2">Presiona Enter para enviar.</p>
       </div>
 
-      {/* Área de Mensajes */}
+      {/* Área de mensajes */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {mensajes.map((mensaje) => (
           <div
@@ -132,25 +121,19 @@ const Chatbot: React.FC = () => {
             className={`flex ${mensaje.esUsuario ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-3 ${mensaje.esUsuario
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white shadow-sm border border-gray-200'
-                }`}
+              className={`max-w-[80%] rounded-lg p-3 ${
+                mensaje.esUsuario ? 'bg-indigo-600 text-white' : 'bg-white shadow-sm border border-gray-200'
+              }`}
             >
-              <p className={`${mensaje.esUsuario ? 'text-white' : 'text-gray-800'} whitespace-pre-line`}>
-                {mensaje.texto}
-              </p>
-              <p className={`text-xs mt-1 ${mensaje.esUsuario ? 'text-indigo-200' : 'text-gray-500'
-                }`}>
-                {mensaje.fecha.toLocaleTimeString()}
-              </p>
+              <p>{mensaje.texto}</p>
+              <p className="text-xs mt-1 text-gray-500">{mensaje.fecha.toLocaleTimeString()}</p>
             </div>
           </div>
         ))}
         {escribiendo && (
           <div className="flex items-center space-x-2 text-gray-500">
             <Bot className="w-5 h-5" />
-            <span className="text-sm">Escribiendo...</span>
+            <span>Escribiendo...</span>
           </div>
         )}
         <div ref={mensajesFinRef} />

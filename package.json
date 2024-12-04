@@ -10,8 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@react-google-maps/api": "^2.20.3",
     "axios": "^1.7.7",
     "chart.js": "^4.4.1",
+    "googleapis": "^144.0.0",
     "lucide-react": "^0.344.0",
     "openai": "^4.72.0",
     "react": "^18.3.1",
